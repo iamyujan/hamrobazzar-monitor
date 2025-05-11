@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hamrobazar Monitor</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Hamrobazar Monitor">
+    <link rel="apple-touch-icon" href="https://hamrobazaar.com/favicon.ico">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 3fr;
+            gap: 20px;
+        }
+
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            display: grid;
+            gap: 8px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button,
+        .button {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        button:hover,
+        .button:hover {
+            background-color: #45a049;
+        }
+
+        button:disabled,
+        .button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        .active {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .inactive {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .log {
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+            font-family: monospace;
+        }
+
+        .results {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .product-card {
+            border: 4px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .product-card.offer {
+            border-color: #45a049;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Hamrobazar Product Monitor</h1>
+
+    <div class="grid">
+        <div class="aside">
+            <div class="card">
+                <h2>Search Configuration</h2>
+                <div class="form-group">
+                    <label for="searchValue">Search Term</label>
+                    <input type="text" id="searchValue" value="grand i10 magna">
+                </div>
+
+                <div class="form-group">
+                    <label for="priceFrom">Price From (Rs)</label>
+                    <input type="number" id="priceFrom" value="1400000">
+                </div>
+
+                <div class="form-group">
+                    <label for="priceTo">Price To (Rs)</label>
+                    <input type="number" id="priceTo" value="1800000">
+                </div>
+
+                <div class="form-group">
+                    <label for="interval">Check Interval (seconds)</label>
+                    <input type="number" id="interval" value="60" min="5">
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Notification Methods</h2>
+
+                <!-- Browser notifications -->
+                <div class="notification-method">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="browserNotifications" checked>
+                        <label for="browserNotifications">Browser Notifications</label>
+                    </div>
+                </div>
+
+                <!-- Sound notifications -->
+                <div class="notification-method">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="soundNotifications" checked>
+                        <label for="soundNotifications">Sound Notifications</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="form-group">
+                    <button id="startBtn">Start Monitoring</button>
+                    <button id="stopBtn" disabled>Stop Monitoring</button>
+                    <button id="checkNowBtn">Check Now</button>
+                </div>
+
+                <div id="monitorStatus" class="status inactive">
+                    Monitor is inactive
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Activity Log</h2>
+                <div id="log" class="log"></div>
+            </div>
+        </div>
+        <div class="main">
+            <div class="card">
+                <h2>Latest Results</h2>
+                <div id="results" class="results">
+                    No results yet
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // hamrobazarMonitor.js content
+        class HamrobazarMonitor {
+            constructor(options = {}) {
+                this.apiUrl = 'https://api.hamrobazaar.com/api/Search/Products';
+                this.checkInterval = options.interval || 5 * 60 * 1000; // Default: 5 minutes
+                this.intervalId = null;
+                this.lastResults = [];
+                this.searchParams = options.searchParams || {
+                    searchValue: 'grand i10 magna',
+                    searchBy: '',
+                    searchByDistance: 0,
+                };
+                this.filterParams = options.filterParams || {
+                    condition: '0',
+                    priceFrom: '1400000',
+                    priceTo: '1800000',
+                    isPriceNegotiable: null,
+                    category: '',
+                    brand: '',
+                    categoryIds: '',
+                    brandIds: '',
+                    advanceFilter: '',
+                };
+                this.notificationCallback = options.onNotification || this.defaultNotificationCallback;
+                this.deviceId = options.deviceId || "2ad9bc3a-5462-43f1-83ec-b38aab991dbf"; // Use consistent device ID
+
+                // Authentication tokens
+                this.apiKey = options.apiKey || "09BECB8F84BCB7A1796AB12B98C1FB9E";
+                this.authToken = options.authToken || "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJOYW1lIjoiOTg0OTE3NzYxOCIsIk5hbWVJZGVudGlmaWVyIjoiNzBDOEM0MjgtMEYzNi00Mzg1LTkxRTItQUQ2RTFENTdBMkVFIiwibmJmIjoxNzQ2OTM5Mjc4LCJFeHAiOiIyMDI1LTA2LTEwIDEwOjM5OjM4IiwianRpIjoidXdPc3YtbUxETDl4RUttei1MSHVaTFYifQ.kL6D2eC_5NlDbK7t983bdpaGwSpk5ULIBTgYCISvfFM";
+
+                // Notification settings
+                this.notificationSettings = {
+                    browser: options.browserNotifications ?? true,
+                    sound: options.soundNotifications ?? true
+                };
+
+                // Create notification sound if enabled
+                if (this.notificationSettings.sound && typeof Audio !== 'undefined') {
+                    this.notificationSound = new Audio(
+                        options.soundUrl || 'https://cdn.pixabay.com/download/audio/2021/08/04/audio_c8c3a9bb33.mp3'
+                    );
+                }
+            }
+
+            async fetchProducts() {
+                try {
+                    const requestOptions = {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json, text/plain, */*',
+                            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
+                            'Sec-Ch-Ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
+                            'Sec-Ch-Ua-Mobile': '?0',
+                            'Sec-Ch-Ua-Platform': '"macOS"',
+                            'Origin': 'https://hamrobazaar.com',
+                            'Referer': 'https://hamrobazaar.com/',
+                            'DeviceId': this.deviceId,
+                            'DeviceSource': 'web',
+                            'ApiKey': this.apiKey,
+                            'Authorization': this.authToken,
+                            'Strict-Transport-Security': 'max-age=2592000',
+                            'X-Content-Type-Options': 'nosniff',
+                            'X-Frame-Options': 'SAMEORIGIN',
+                            'country_code': 'null'
+                        },
+                        body: JSON.stringify({
+                            pageNumber: 1,
+                            pageSize: 27,
+                            latitude: 0,
+                            longitude: 0,
+                            deviceId: this.deviceId,
+                            deviceSource: 'web',
+                            isHBSelect: false,
+                            searchParams: this.searchParams,
+                            filterParams: this.filterParams,
+                            sortParam: '3',
+                        }),
+                    };
+
+                    const response = await fetch(this.apiUrl, requestOptions);
+
+                    if (!response.ok) {
+                        throw new Error(`API error: ${response.status}`);
+                    }
+
+                    // Try to parse the response as JSON directly
+                    try {
+                        const data = await response.json();
+                        return data;
+                    } catch (parseError) {
+                        // If we can't parse as JSON, get the text to see what it is
+                        const text = await response.text();
+                        console.error('Failed to parse response as JSON:', text.substring(0, 100) + '...');
+                        throw new Error('Failed to parse API response as JSON');
+                    }
+                } catch (error) {
+                    console.error('Error fetching products:', error);
+                    return null;
+                }
+            }
+
+            findNewProducts(currentResults) {
+                if (!this.lastResults.length) return currentResults;
+
+                // Get IDs of last results
+                const lastIds = this.lastResults.map(item => item.id);
+
+                // Find products that weren't in the last results
+                return currentResults.filter(item => !lastIds.includes(item.id));
+            }
+
+            defaultNotificationCallback(newProducts) {
+                if (newProducts.length === 0) return;
+
+                console.log(`🔔 Found ${newProducts.length} new products!`);
+
+                // Browser notification
+                if (this.notificationSettings.browser && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                    new Notification(`${newProducts.length} new vehicles found`, {
+                        body: newProducts.map(p => p.name || 'New vehicle').join('\n').substring(0, 100) + '...',
+                        icon: 'https://hamrobazaar.com/favicon.ico',
+                    });
+                }
+
+                // Sound notification
+                if (this.notificationSettings.sound && this.notificationSound) {
+                    this.notificationSound.play().catch(e => console.error("Couldn't play notification sound", e));
+                }
+
+                // Log details of each new product
+                newProducts.forEach(product => {
+                    console.log(`- ${product.name || 'New listing'}: Rs. ${product.price}`);
+                });
+            }
+
+            async checkForUpdates() {
+                try {
+                    const results = await this.fetchProducts();
+                    if (!results || !results.data) return;
+
+                    const products = results.data;
+                    const newProducts = this.findNewProducts(products);
+
+                    if (newProducts.length > 0) {
+                        this.notificationCallback(newProducts);
+                    }
+
+                    // Update the last results
+                    this.lastResults = products;
+                } catch (error) {
+                    console.error('Error during check for updates:', error);
+                }
+            }
+
+            requestNotificationPermission() {
+                if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+                    Notification.requestPermission();
+                }
+            }
+
+            start() {
+                this.requestNotificationPermission();
+
+                // Do an initial check
+                this.checkForUpdates();
+
+                // Set up regular interval
+                this.intervalId = setInterval(() => this.checkForUpdates(), this.checkInterval);
+                console.log(`🔍 Monitoring started. Checking every ${this.checkInterval / 60000} minutes.`);
+
+                return this;
+            }
+
+            stop() {
+                if (this.intervalId) {
+                    clearInterval(this.intervalId);
+                    this.intervalId = null;
+                    console.log('⏹️ Monitoring stopped.');
+                }
+                return this;
+            }
+
+            updateSearchParams(newParams) {
+                this.searchParams = { ...this.searchParams, ...newParams };
+                return this;
+            }
+
+            updateFilterParams(newParams) {
+                this.filterParams = { ...this.filterParams, ...newParams };
+                return this;
+            }
+        }
+
+        // UI interaction code
+        let monitor = null;
+        const logElement = document.getElementById('log');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const checkNowBtn = document.getElementById('checkNowBtn');
+        const statusElement = document.getElementById('monitorStatus');
+        const resultsElement = document.getElementById('results');
+
+        function log(message) {
+            const now = new Date();
+            const timestamp = now.toLocaleTimeString();
+            logElement.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function displayResults(products) {
+            console.log('Products received:', products);
+
+            if (!products || products.length === 0) {
+                resultsElement.innerHTML = "No products found";
+                return;
+            }
+
+            resultsElement.innerHTML = "";
+            products.forEach(product => {
+                console.log('Processing product:', product);
+
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                if (product.price <= 1650000) {
+                    card.classList.add('offer');
+                }
+
+                // Format the price with thousand separators
+                const formattedPrice = new Intl.NumberFormat('en-IN').format(product.price || 0);
+
+                // Get first image URL if available
+                const imageUrl = product.imageUrl || (product.productMedia && product.productMedia.length > 0 ?
+                    product.productMedia[0].locationKey : null);
+
+
+                // Create a safer way to extract location
+                const locationText = product.location && product.location.locationDescription
+                    ? product.location.locationDescription.split(',')[0]
+                    : 'N/A';
+
+                card.innerHTML = `
+                    ${imageUrl ? `<img src="${imageUrl}" style="max-width:100%; max-height:200px; object-fit:contain; margin-bottom:10px;">` : ''}
+                    <strong>${product.name || 'Untitled'}</strong>
+                    <div>Price: Rs. ${formattedPrice}${product.negotiable ? ' (Negotiable)' : ''}</div>
+                    <div>Location: ${locationText}</div>
+                    <div>Date: ${new Date(product.createdOn || Date.now()).toLocaleString()}</div>
+                    <div>Seller: ${product.creatorInfo?.createdByName || 'Unknown'}</div>
+                    ${product.creatorInfo && !product.creatorInfo.hidePhoneNumber ? `<div>Contact: ${product.creatorInfo.createdBy || 'N/A'}</div>` : ''}
+                `;
+
+                if (product.id) {
+                    const viewButton = document.createElement('a');
+                    viewButton.className = 'button';
+                    viewButton.innerText = 'View Listing';
+                    viewButton.style.marginTop = '10px';
+                    viewButton.href = `https://hamrobazaar.com/cars/${product.brandName.toLowerCase()}/${product.name.toLowerCase().replace(/\s+/g, '-')}-in-${product.location.locationDescription.toLowerCase().includes('kathmandu') ? 'kathmandu' : 'nepal'}/${product.id}`;
+                    viewButton.target = '_blank';
+                    viewButton.addEventListener('click', () => {
+                        window.open(`https://hamrobazaar.com/cars/${product.brandName.toLowerCase()}/${product.name.toLowerCase().replace(/\s+/g, '-')}-in-${product.location.locationDescription.toLowerCase().includes('kathmandu') ? 'kathmandu' : 'nepal'}/${product.id}`, '_blank');
+                    });
+                    card.appendChild(viewButton);
+                }
+
+                resultsElement.appendChild(card);
+            });
+        }
+        // Add this code at the end of your script, just before the closing
+
+        // Auto-start monitoring when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            // Get default values from the form
+            const searchValue = document.getElementById('searchValue').value;
+            const priceFrom = document.getElementById('priceFrom').value;
+            const priceTo = document.getElementById('priceTo').value;
+            const intervalSeconds = parseInt(document.getElementById('interval').value);
+
+            // Notification options
+            const browserNotifications = document.getElementById('browserNotifications').checked;
+            const soundNotifications = document.getElementById('soundNotifications').checked;
+
+            // Create the monitor with default settings
+            monitor = new HamrobazarMonitor({
+                interval: intervalSeconds * 1000,
+                searchParams: {
+                    searchValue: searchValue,
+                    searchBy: "",
+                    searchByDistance: 0
+                },
+                filterParams: {
+                    condition: "0",
+                    priceFrom: priceFrom,
+                    priceTo: priceTo,
+                    isPriceNegotiable: null,
+                    category: "",
+                    brand: "",
+                    categoryIds: "",
+                    brandIds: "",
+                    advanceFilter: ""
+                },
+                browserNotifications,
+                soundNotifications,
+                onNotification: (products) => {
+                    log(`🔔 Found ${products.length} new products!`);
+                    displayResults(products);
+                }
+            });
+
+            // Start monitoring
+            monitor.start();
+
+            // Update UI
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            statusElement.className = 'status active';
+            statusElement.textContent = `Monitor is active - checking every ${intervalSeconds} seconds`;
+
+            log(`Automatically started monitoring for "${searchValue}" between Rs. ${priceFrom} and Rs. ${priceTo}`);
+
+            // Immediately check for products and display them
+            monitor.fetchProducts().then(results => {
+                if (results && results.data) {
+                    log(`Found ${results.data.length} products on initial check`);
+                    displayResults(results.data);
+                }
+            }).catch(error => {
+                log(`Error during initial check: ${error.message}`);
+            });
+        });
+        startBtn.addEventListener('click', () => {
+            const searchValue = document.getElementById('searchValue').value;
+            const priceFrom = document.getElementById('priceFrom').value;
+            const priceTo = document.getElementById('priceTo').value;
+            const intervalSeconds = parseInt(document.getElementById('interval').value);
+
+            // Notification options
+            const browserNotifications = document.getElementById('browserNotifications').checked;
+            const soundNotifications = document.getElementById('soundNotifications').checked;
+
+            // Create the monitor
+            monitor = new HamrobazarMonitor({
+                interval: intervalSeconds * 1000,
+                searchParams: {
+                    searchValue: searchValue,
+                    searchBy: "",
+                    searchByDistance: 0
+                },
+                filterParams: {
+                    condition: "0",
+                    priceFrom: priceFrom,
+                    priceTo: priceTo,
+                    isPriceNegotiable: null,
+                    category: "",
+                    brand: "",
+                    categoryIds: "",
+                    brandIds: "",
+                    advanceFilter: ""
+                },
+                browserNotifications,
+                soundNotifications,
+                onNotification: (products) => {
+                    log(`🔔 Found ${products.length} new products!`);
+                    displayResults(products);
+                }
+            });
+
+            // Start monitoring
+            monitor.start();
+
+            // Update UI
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            statusElement.className = 'status active';
+            statusElement.textContent = `Monitor is active - checking every ${intervalSeconds} seconds`;
+
+            log(`Started monitoring for "${searchValue}" between Rs. ${priceFrom} and Rs. ${priceTo}`);
+        });
+
+        stopBtn.addEventListener('click', () => {
+            if (monitor) {
+                monitor.stop();
+                monitor = null;
+
+                // Update UI
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                statusElement.className = 'status inactive';
+                statusElement.textContent = 'Monitor is inactive';
+
+                log('Monitoring stopped');
+            }
+        });
+
+        checkNowBtn.addEventListener('click', async () => {
+            if (!monitor) {
+                // Create temporary monitor for one-time check
+                const searchValue = document.getElementById('searchValue').value;
+                const priceFrom = document.getElementById('priceFrom').value;
+                const priceTo = document.getElementById('priceTo').value;
+
+                log(`Performing one-time check for "${searchValue}"...`);
+
+                const tempMonitor = new HamrobazarMonitor({
+                    searchParams: {
+                        searchValue: searchValue,
+                        searchBy: "",
+                        searchByDistance: 0
+                    },
+                    filterParams: {
+                        condition: "0",
+                        priceFrom: priceFrom,
+                        priceTo: priceTo,
+                        isPriceNegotiable: null,
+                        category: "",
+                        brand: "",
+                        categoryIds: "",
+                        brandIds: "",
+                        advanceFilter: ""
+                    }
+                });
+
+                try {
+                    const results = await tempMonitor.fetchProducts();
+                    console.log('API Response:', results);
+
+                    if (results && results.data) {
+                        log(`Found ${results.data.length} products`);
+                        displayResults(results.data);
+                    } else {
+                        log('No results returned from API');
+                        resultsElement.innerHTML = "No products found";
+                    }
+                } catch (error) {
+                    console.error('Error details:', error);
+                    log(`Error during check: ${error.message}`);
+                }
+            } else {
+                // Use existing monitor for check
+                log('Performing manual check...');
+                const results = await monitor.fetchProducts();
+                if (results && results.data) {
+                    log(`Found ${results.data.length} products`);
+                    displayResults(results.data);
+                    // Also update the last results
+                    monitor.lastResults = results.data;
+                }
+            }
+        });
+
+        // Request notification permission on page load
+        if (Notification && Notification.permission !== "granted") {
+            document.addEventListener('DOMContentLoaded', function () {
+                Notification.requestPermission();
+            });
+        }
+
+        function testWithSampleData() {
+            // Your sample data that you posted earlier
+            const sampleData = {
+                "status": {
+                    "message": ["11 Products found"],
+                    "redirect": null,
+                    "status": true
+                },
+                "meta": {
+                    "pageNumber": 1,
+                    "pageSize": 27,
+                    "totalPages": 1,
+                    "totalRecords": 11
+                },
+                "data": [
+                    // Your sample data items here...
+                    // (paste the data array from your earlier message)
+                ]
+            };
+
+            // Display the sample data
+            log(`Found ${sampleData.data.length} products (sample data)`);
+            displayResults(sampleData.data);
+        }
+
+        // Add a button in your HTML
+        // <button id="testBtn">Test with Sample Data</button>
+
+        // Then add an event listener
+        document.getElementById('testBtn').addEventListener('click', testWithSampleData);
+    </script>
+</body>
+
+</html>
