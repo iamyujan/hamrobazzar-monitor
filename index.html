@@ -3,8 +3,17 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Hamrobazar Monitor</title>
+    <!-- Base Core -->
+    <link rel="stylesheet" href="https://unpkg.com/@getbase/base/core.css">
+    <!-- Base Common -->
+    <link rel="stylesheet" href="https://unpkg.com/@getbase/base/code.css">
+    <link rel="stylesheet" href="https://unpkg.com/@getbase/base/forms.css">
+    <link rel="stylesheet" href="https://unpkg.com/@getbase/base/tables.css">
+    <link rel="stylesheet" href="https://unpkg.com/@getbase/base/typography.css">
+    <link rel="stylesheet" href="https://unpkg.com/@getbase/base/headings.css">
+    <!-- Add Your Website / App Stylesheet -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="Hamrobazar Monitor">
@@ -12,10 +21,25 @@
     <style>
         body {
             font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+
+        :root {
+            --rounded-corners: 8px;
+        }
+
+        .header {
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
-            line-height: 1.6;
         }
 
         .grid {
@@ -25,10 +49,11 @@
         }
 
         .card {
+            background-color: #fff;
             border: 1px solid #ddd;
-            border-radius: 8px;
+            border-radius: var(--rounded-corners);
             padding: 20px;
-            margin-bottom: 20px;
+            margin-block: 20px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
@@ -49,7 +74,7 @@
             width: 100%;
             padding: 8px;
             border: 1px solid #ddd;
-            border-radius: 4px;
+            border-radius: var(--rounded-corners);
             box-sizing: border-box;
         }
 
@@ -60,7 +85,7 @@
             color: white;
             border: none;
             padding: 10px 15px;
-            border-radius: 4px;
+            border-radius: var(--rounded-corners);
             cursor: pointer;
             text-decoration: none;
         }
@@ -78,7 +103,7 @@
 
         .status {
             padding: 10px;
-            border-radius: 4px;
+            border-radius: var(--rounded-corners);
             margin: 10px 0;
         }
 
@@ -97,7 +122,7 @@
             overflow-y: auto;
             border: 1px solid #ddd;
             padding: 10px;
-            border-radius: 4px;
+            border-radius: var(--rounded-corners);
             background-color: #f8f9fa;
             font-family: monospace;
         }
@@ -111,7 +136,9 @@
         .product-card {
             border: 4px solid #ddd;
             padding: 10px;
-            border-radius: 4px;
+            border-radius: var(--rounded-corners);
+            display: grid;
+            place-items: start;
         }
 
         .product-card.offer {
@@ -127,79 +154,142 @@
             width: auto;
             margin-right: 10px;
         }
+
+        /* Mobile menu styles */
+        .menu-toggle {
+            display: none;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: var(--rounded-corners);
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .aside {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 90%;
+                height: 100%;
+                background-color: white;
+                z-index: 999;
+                padding: 20px 10px;
+                overflow-y: auto;
+                transition: left 0.3s ease;
+                box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+                transform: translateX(-100%);
+            }
+
+            .aside.open {
+                transform: translateX(0);
+            }
+
+            .menu-toggle {
+                display: block;
+            }
+
+            .overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 998;
+            }
+
+            .overlay.active {
+                display: block;
+            }
+        }
     </style>
 </head>
 
 <body>
-    <h1>Hamrobazar Product Monitor</h1>
+    <div class="container">
+        <header class="header">
+            <h1>Yujan</h1>
+            <button id="menuToggle" class="menu-toggle">☰ Menu</button>
+        </header>
 
-    <div class="grid">
-        <div class="aside">
-            <div class="card">
-                <h2>Search Configuration</h2>
-                <div class="form-group">
-                    <label for="searchValue">Search Term</label>
-                    <input type="text" id="searchValue" value="grand i10 magna">
-                </div>
+        <!-- Menu toggle button for mobile -->
+        <div id="overlay" class="overlay"></div>
 
-                <div class="form-group">
-                    <label for="priceFrom">Price From (Rs)</label>
-                    <input type="number" id="priceFrom" value="1400000">
-                </div>
+        <div class="grid">
+            <div class="aside" id="menuDrawer">
+                <div class="card">
+                    <h2>Search Configuration</h2>
+                    <div class="form-group">
+                        <label for="searchValue">Search Term</label>
+                        <input type="text" id="searchValue" value="grand i10 magna">
+                    </div>
 
-                <div class="form-group">
-                    <label for="priceTo">Price To (Rs)</label>
-                    <input type="number" id="priceTo" value="1800000">
-                </div>
+                    <div class="form-group">
+                        <label for="priceFrom">Price From (Rs)</label>
+                        <input type="number" id="priceFrom" value="1400000">
+                    </div>
 
-                <div class="form-group">
-                    <label for="interval">Check Interval (seconds)</label>
-                    <input type="number" id="interval" value="60" min="5">
-                </div>
-            </div>
+                    <div class="form-group">
+                        <label for="priceTo">Price To (Rs)</label>
+                        <input type="number" id="priceTo" value="1800000">
+                    </div>
 
-            <div class="card">
-                <h2>Notification Methods</h2>
-
-                <!-- Browser notifications -->
-                <div class="notification-method">
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="browserNotifications" checked>
-                        <label for="browserNotifications">Browser Notifications</label>
+                    <div class="form-group">
+                        <label for="interval">Check Interval (seconds)</label>
+                        <input type="number" id="interval" value="60" min="5">
                     </div>
                 </div>
 
-                <!-- Sound notifications -->
-                <div class="notification-method">
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="soundNotifications" checked>
-                        <label for="soundNotifications">Sound Notifications</label>
+                <div class="card">
+                    <h2>Notification Methods</h2>
+
+                    <!-- Browser notifications -->
+                    <div class="notification-method">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="browserNotifications" checked>
+                            <label for="browserNotifications">Browser Notifications</label>
+                        </div>
+                    </div>
+
+                    <!-- Sound notifications -->
+                    <div class="notification-method">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="soundNotifications" checked>
+                            <label for="soundNotifications">Sound Notifications</label>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="card">
-                <div class="form-group">
-                    <button id="startBtn">Start Monitoring</button>
-                    <button id="stopBtn" disabled>Stop Monitoring</button>
-                    <button id="checkNowBtn">Check Now</button>
+                <div class="card">
+                    <div class="form-group">
+                        <button id="startBtn">Start Monitoring</button>
+                        <button id="stopBtn" disabled>Stop Monitoring</button>
+                        <button id="checkNowBtn">Check Now</button>
+                    </div>
+
+                    <div id="monitorStatus" class="status inactive">
+                        Monitor is inactive
+                    </div>
                 </div>
 
-                <div id="monitorStatus" class="status inactive">
-                    Monitor is inactive
+                <div class="card">
+                    <h2>Activity Log</h2>
+                    <div id="log" class="log"></div>
                 </div>
             </div>
-
-            <div class="card">
-                <h2>Activity Log</h2>
-                <div id="log" class="log"></div>
-            </div>
-        </div>
-        <div class="main">
-            <div class="card">
-                <h2>Latest Results</h2>
-                <div id="results" class="results">
-                    No results yet
+            <div class="main">
+                <div class="card">
+                    <h2>Latest Results</h2>
+                    <div id="results" class="results">
+                        No results yet
+                    </div>
                 </div>
             </div>
         </div>
@@ -409,6 +499,41 @@
         const statusElement = document.getElementById('monitorStatus');
         const resultsElement = document.getElementById('results');
 
+        // Mobile menu handling
+        const menuToggle = document.getElementById('menuToggle');
+        const menuDrawer = document.getElementById('menuDrawer');
+        const overlay = document.getElementById('overlay');
+
+        // Toggle menu drawer
+        menuToggle.addEventListener('click', function () {
+            menuDrawer.classList.toggle('open');
+            overlay.classList.toggle('active');
+        });
+
+        // Close menu when clicking overlay
+        overlay.addEventListener('click', function () {
+            menuDrawer.classList.remove('open');
+            overlay.classList.remove('active');
+        });
+
+        // Close menu when window is resized above mobile breakpoint
+        window.addEventListener('resize', function () {
+            if (window.innerWidth > 768) {
+                menuDrawer.classList.remove('open');
+                overlay.classList.remove('active');
+            }
+        });
+
+        // Close menu when an action is taken
+        [startBtn, stopBtn, checkNowBtn].forEach(btn => {
+            btn.addEventListener('click', function () {
+                if (window.innerWidth <= 768) {
+                    menuDrawer.classList.remove('open');
+                    overlay.classList.remove('active');
+                }
+            });
+        });
+
         function log(message) {
             const now = new Date();
             const timestamp = now.toLocaleTimeString();
@@ -448,13 +573,13 @@
                     : 'N/A';
 
                 card.innerHTML = `
-                    ${imageUrl ? `<img src="${imageUrl}" style="max-width:100%; max-height:200px; object-fit:contain; margin-bottom:10px;">` : ''}
+                    ${imageUrl ? `<img src="${imageUrl}" style="width:100%; max-height:200px; object-fit:cover; margin-bottom:10px; border-radius: var(--rounded-corners);">` : ''}
                     <strong>${product.name || 'Untitled'}</strong>
                     <div>Price: Rs. ${formattedPrice}${product.negotiable ? ' (Negotiable)' : ''}</div>
                     <div>Location: ${locationText}</div>
                     <div>Date: ${new Date(product.createdOn || Date.now()).toLocaleString()}</div>
                     <div>Seller: ${product.creatorInfo?.createdByName || 'Unknown'}</div>
-                    ${product.creatorInfo && !product.creatorInfo.hidePhoneNumber ? `<div>Contact: ${product.creatorInfo.createdBy || 'N/A'}</div>` : ''}
+                    ${product.creatorInfo && !product.creatorInfo.hidePhoneNumber ? `<div>Contact: <a href="tel:${product.creatorInfo.createdBy}">${product.creatorInfo.createdBy || 'N/A'}</a></div>` : ''}
                 `;
 
                 if (product.id) {
