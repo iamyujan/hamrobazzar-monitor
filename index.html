@@ -35,6 +35,10 @@
             align-items: center;
         }
 
+        .header-actions {
+            display: flex;
+        }
+
         .container {
             width: 100%;
             max-width: 1200px;
@@ -216,7 +220,10 @@
     <div class="container">
         <header class="header">
             <h1>Yujan</h1>
-            <button id="menuToggle" class="menu-toggle">☰ Menu</button>
+            <div class="header-actions">
+                <button id="refreshBtn" class="button" style="margin-right: 10px;">↻</button>
+                <button id="menuToggle" class="menu-toggle">☰</button>
+            </div>
         </header>
 
         <!-- Menu toggle button for mobile -->
@@ -503,11 +510,68 @@
         const menuToggle = document.getElementById('menuToggle');
         const menuDrawer = document.getElementById('menuDrawer');
         const overlay = document.getElementById('overlay');
+        const refreshBtn = document.getElementById('refreshBtn');
 
         // Toggle menu drawer
         menuToggle.addEventListener('click', function () {
             menuDrawer.classList.toggle('open');
             overlay.classList.toggle('active');
+        });
+
+        // Refresh button functionality
+        refreshBtn.addEventListener('click', async function () {
+            log('Refreshing data...');
+
+            if (monitor) {
+                // Use existing monitor
+                const results = await monitor.fetchProducts();
+                if (results && results.data) {
+                    log(`Found ${results.data.length} products`);
+                    displayResults(results.data);
+                    // Update the last results
+                    monitor.lastResults = results.data;
+                }
+            } else {
+                // No active monitor, act like the Check Now button
+                const searchValue = document.getElementById('searchValue').value;
+                const priceFrom = document.getElementById('priceFrom').value;
+                const priceTo = document.getElementById('priceTo').value;
+
+                log(`Performing one-time check for "${searchValue}"...`);
+
+                const tempMonitor = new HamrobazarMonitor({
+                    searchParams: {
+                        searchValue: searchValue,
+                        searchBy: "",
+                        searchByDistance: 0
+                    },
+                    filterParams: {
+                        condition: "0",
+                        priceFrom: priceFrom,
+                        priceTo: priceTo,
+                        isPriceNegotiable: null,
+                        category: "",
+                        brand: "",
+                        categoryIds: "",
+                        brandIds: "",
+                        advanceFilter: ""
+                    }
+                });
+
+                try {
+                    const results = await tempMonitor.fetchProducts();
+
+                    if (results && results.data) {
+                        log(`Found ${results.data.length} products`);
+                        displayResults(results.data);
+                    } else {
+                        log('No results returned from API');
+                        resultsElement.innerHTML = "No products found";
+                    }
+                } catch (error) {
+                    log(`Error during refresh: ${error.message}`);
+                }
+            }
         });
 
         // Close menu when clicking overlay
