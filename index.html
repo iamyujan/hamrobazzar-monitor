@@ -102,6 +102,38 @@
             height: 40px;
         }
 
+        .button--loading {
+            position: relative;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .button--loading::after {
+            content: "";
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            margin: auto;
+            border: 3px solid transparent;
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: button-loading-spinner 1s ease infinite;
+        }
+
+        @keyframes button-loading-spinner {
+            from {
+                transform: rotate(0turn);
+            }
+
+            to {
+                transform: rotate(1turn);
+            }
+        }
+
         button:hover,
         .button:hover {
             background-color: #45a049;
@@ -229,7 +261,10 @@
         <header class="header">
             <h1>Yujan</h1>
             <div class="header-actions">
-                <button id="refreshBtn" class="button button--icon" style="margin-right: 10px;">↻</button>
+                <button id="refreshBtn" class="button button--icon"
+                    style="margin-right: 10px; -webkit-touch-callout: none;" onclick="performRefresh();">
+                    <span id="refreshBtnText">↻</span>
+                </button>
                 <button id="menuToggle" class="menu-toggle button button--icon">☰</button>
             </div>
         </header>
@@ -518,55 +553,57 @@
         const menuToggle = document.getElementById('menuToggle');
         const menuDrawer = document.getElementById('menuDrawer');
         const overlay = document.getElementById('overlay');
-        const refreshBtn = document.getElementById('refreshBtn');
 
-        // Toggle menu drawer
-        menuToggle.addEventListener('click', function () {
-            menuDrawer.classList.toggle('open');
-            overlay.classList.toggle('active');
-        });
+        // Define the performRefresh function globally so it can be called from HTML
+        window.performRefresh = async function () {
+            // Get button elements
+            const refreshBtn = document.getElementById('refreshBtn');
+            const refreshBtnText = document.getElementById('refreshBtnText');
 
-        // Refresh button functionality
-        refreshBtn.addEventListener('click', async function () {
+            // Set loading state
+            refreshBtn.disabled = true;
+            refreshBtn.classList.add('button--loading');
+            refreshBtnText.style.opacity = '0';
+
             log('Refreshing data...');
 
-            if (monitor) {
-                // Use existing monitor
-                const results = await monitor.fetchProducts();
-                if (results && results.data) {
-                    log(`Found ${results.data.length} products`);
-                    displayResults(results.data);
-                    // Update the last results
-                    monitor.lastResults = results.data;
-                }
-            } else {
-                // No active monitor, act like the Check Now button
-                const searchValue = document.getElementById('searchValue').value;
-                const priceFrom = document.getElementById('priceFrom').value;
-                const priceTo = document.getElementById('priceTo').value;
-
-                log(`Performing one-time check for "${searchValue}"...`);
-
-                const tempMonitor = new HamrobazarMonitor({
-                    searchParams: {
-                        searchValue: searchValue,
-                        searchBy: "",
-                        searchByDistance: 0
-                    },
-                    filterParams: {
-                        condition: "0",
-                        priceFrom: priceFrom,
-                        priceTo: priceTo,
-                        isPriceNegotiable: null,
-                        category: "",
-                        brand: "",
-                        categoryIds: "",
-                        brandIds: "",
-                        advanceFilter: ""
+            try {
+                if (monitor) {
+                    // Use existing monitor
+                    const results = await monitor.fetchProducts();
+                    if (results && results.data) {
+                        log(`Found ${results.data.length} products`);
+                        displayResults(results.data);
+                        // Update the last results
+                        monitor.lastResults = results.data;
                     }
-                });
+                } else {
+                    // No active monitor, act like the Check Now button
+                    const searchValue = document.getElementById('searchValue').value;
+                    const priceFrom = document.getElementById('priceFrom').value;
+                    const priceTo = document.getElementById('priceTo').value;
 
-                try {
+                    log(`Performing one-time check for "${searchValue}"...`);
+
+                    const tempMonitor = new HamrobazarMonitor({
+                        searchParams: {
+                            searchValue: searchValue,
+                            searchBy: "",
+                            searchByDistance: 0
+                        },
+                        filterParams: {
+                            condition: "0",
+                            priceFrom: priceFrom,
+                            priceTo: priceTo,
+                            isPriceNegotiable: null,
+                            category: "",
+                            brand: "",
+                            categoryIds: "",
+                            brandIds: "",
+                            advanceFilter: ""
+                        }
+                    });
+
                     const results = await tempMonitor.fetchProducts();
 
                     if (results && results.data) {
@@ -576,10 +613,22 @@
                         log('No results returned from API');
                         resultsElement.innerHTML = "No products found";
                     }
-                } catch (error) {
-                    log(`Error during refresh: ${error.message}`);
                 }
+            } catch (error) {
+                log(`Error during refresh: ${error.message}`);
+                console.error('Refresh error:', error);
+            } finally {
+                // Reset button state after fetch completes
+                refreshBtn.disabled = false;
+                refreshBtn.classList.remove('button--loading');
+                refreshBtnText.style.opacity = '1';
             }
+        };
+
+        // Toggle menu drawer
+        menuToggle.addEventListener('click', function () {
+            menuDrawer.classList.toggle('open');
+            overlay.classList.toggle('active');
         });
 
         // Close menu when clicking overlay
